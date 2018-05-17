@@ -1,5 +1,6 @@
 
-const http = require('http')
+const http = require('http');
+const url = require('url');
 const MediaServer  = require('medooze-media-server');
 const EventEmitter	= require('events').EventEmitter;
 const TransactionManager = require('transaction-manager');
@@ -67,8 +68,6 @@ class Participant
 			ice  : sdp.getICE() 
 		});
 		
-		//Dump contents
-		//this.transport.dump("/tmp/sfu-"+this.uri.join("-")+".pcap");
 
 		//Set RTP remote properties
 		this.transport.setRemoteProperties({
@@ -420,7 +419,6 @@ class Room
 
 
 
-
 MediaServer.enableDebug(true);
 MediaServer.enableUltraDebug(false);
 
@@ -428,27 +426,28 @@ const rooms = new Map();
 
 const app = express();
 const webServer = http.createServer(app);
-
 const wss = new WebSocket.Server({ noServer:true});
+
+app.use(express.static('public'));
 
 const ip = '127.0.0.1';
 const port = 5000;
 
 webServer.on('upgrade', async (req,sock,head) => {
 
-  const pathname = url.parse(req.url).pathname;
+  let Url  = url.parse(req.url, true);
   
   wss.handleUpgrade(req,sock,head, async (socket) => {
 
       let updateParticipants;
       let participant;
-      let room = rooms.get(url.query.id);
+      let room = rooms.get(Url.query.id);
       
       //if not found
       if (!room) 
       {
           //Create new Room
-          room = new Room(url.query.id,ip);
+          room = new Room(Url.query.id,ip);
           //Append to room list
           rooms.set(room.getId(), room);
       }

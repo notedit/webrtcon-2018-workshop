@@ -28,7 +28,6 @@
 			Local video<br />
             <div id="local_video"  style="width: 320px; height: 240px; border: 1px solid black;"></div>
             
-		
             <br/>
 			<span id="state_span">  </span>
 		</div>
@@ -49,13 +48,13 @@ let audioDeviceId;
 //Get our url
 const href = new URL(window.location.href);
 //Get id
-const roomId = href.searchParams.get("roomId");
+const roomId = 'mediaroom';
 //Get name
-const name = href.searchParams.get("name");
+const name = Math.random().toString(36).substring(7);
 //Get video
 const nopublish = href.searchParams.has("nopublish");
 //Get ws url from navigaro url
-const url = "ws://"+href.host;
+const url = "ws://"+href.host + ':5000/';
 
 
 function addVideoForStream(stream,muted)
@@ -86,7 +85,7 @@ function removeVideoForStream(stream)
 	video.className = "disabled";
 }
 
-function connect(url,roomId,name) 
+function connect() 
 {
 	var pc = new RTCPeerConnection({
 		bundlePolicy: "max-bundle",
