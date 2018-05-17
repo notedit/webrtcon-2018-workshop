@@ -11,6 +11,8 @@
   "dependencies": {
     "express": "^4.16.3",
     "medooze-media-server": "^0.31.3",
-    "semantic-sdp": "^3.6.0"
+    "semantic-sdp": "^3.6.0",
+    "transaction-manager": "^2.1.0",
+    "ws": "^5.1.1"
   }
 }
