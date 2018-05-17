@@ -469,13 +469,15 @@ class TransactionManager extends EventEmitter
 			cmd.resolve = resolve;
 			cmd.reject  = reject;
 			//Add to map
-			this.transactions.set(cmd.transId,cmd);
-			
+      this.transactions.set(cmd.transId,cmd);
+      
+
 			try {
 				//Send json
 				this.transport.send(json);
 			} catch (e) {
-				//delete transacetion
+        //delete transacetion
+        console.error(e);
 				this.transactions.delete(cmd.transId);
 				//rethrow
 				throw e;

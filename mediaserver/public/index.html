@@ -15,28 +15,6 @@
       margin: 0 0 1em 0;
     }
 </style>
-
-
-</head>
-<body >
-	<h1>MediaServer  Demo</h1>
-
-	<br/>
-
-	<div id="conference">
-		<div>
-			Local video<br />
-            <div id="local_video"  style="width: 320px; height: 240px; border: 1px solid black;"></div>
-            
-            <br/>
-			<span id="state_span">  </span>
-		</div>
-		Remote videos:
-		<br />
-		<div id="remote_container"></div>
-	</div>
-</body>
-
 <script src='./transaction-manager.js'></script>
 <script type='text/javascript'>
 
@@ -44,6 +22,7 @@ window.localStorage.setItem('debug', '* -engine* *WARN* *ERROR*');
 
 let participants;
 let audioDeviceId;
+let container;
 
 //Get our url
 const href = new URL(window.location.href);
@@ -54,7 +33,8 @@ const name = Math.random().toString(36).substring(7);
 //Get video
 const nopublish = href.searchParams.has("nopublish");
 //Get ws url from navigaro url
-const url = "ws://"+href.host + ':5000/';
+const url = "ws://127.0.0.1:5001";
+
 
 
 function addVideoForStream(stream,muted)
@@ -62,7 +42,9 @@ function addVideoForStream(stream,muted)
 	//Create new video element
 	const video = document.createElement("video");
 	//Set same id
-	video.id = stream.id;
+  video.id = stream.id;
+  video.width = 320;
+  video.height = 240;
 	//Set src stream
 	video.srcObject = stream;
 	//Set other properties
@@ -80,13 +62,17 @@ function removeVideoForStream(stream)
 	video.addEventListener('webkitTransitionEnd',function(){
             //Delete it
 	    video.parentElement.removeChild(video);
-        });
+    });
 	//Disable it first
 	video.className = "disabled";
 }
 
 function connect() 
 {
+  container = document.getElementById('container');
+
+  console.log("connect");
+
 	var pc = new RTCPeerConnection({
 		bundlePolicy: "max-bundle",
 		rtcpMuxPolicy : "require"
@@ -112,26 +98,23 @@ function connect()
 	
 	ws.onopen = async function()
 	{
-	        console.log("ws:opened");
+	  console.log("ws:opened");
 		
 		try
 		{
-			if (!nopublish)
-			{
-				const stream = await navigator.mediaDevices.getUserMedia({
-					audio: {
-						deviceId: audioDeviceId
-					},
-					video: true
-				});
 
-				console.debug("md::getUserMedia sucess",stream);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true
+      });
 
-				//Play it
-				addVideoForStream(stream,true);
-				//Add stream to peer connection
-				 pc.addStream(stream);
-			 }
+      console.debug("md::getUserMedia sucess",stream);
+
+      //Play it
+      addVideoForStream(stream,true);
+      //Add stream to peer connection
+      pc.addStream(stream);
+			 
 			
 			//Create new offer
 			const offer = await pc.createOffer({
@@ -139,13 +122,13 @@ function connect()
 				offerToReceiveVideo: true
 			});
 
-			console.debug("pc::createOffer sucess",offer);
-
 			//Set it
 			pc.setLocalDescription(offer);
 
-			console.log("pc::setLocalDescription succes",offer.sdp);
-			
+      console.log("pc::setLocalDescription succes",offer.sdp);
+      
+      console.log('join', tm);
+
 			//Join room
 			const joined = await tm.cmd("join",{
 				name	: name,
@@ -220,6 +203,21 @@ function connect()
 }
 
 
+console.log("let gogo");
  
 </script>
+
+</head>
+<body onload="connect();">
+	<h1>MediaServer  Demo</h1>
+	<br/>
+
+	<div id="conference">
+		videos:
+		<br />
+		<div id="container"></div>
+	</div>
+</body>
+
+
 </html>

@@ -19,7 +19,8 @@ const CodecInfo		= SemanticSDP.CodecInfo;
 
 
 const express = require('express');
-const WebSocket = require('ws');
+const WebSocketServer = require('websocket').server;
+
 
 
 class Participant
@@ -425,129 +426,151 @@ MediaServer.enableUltraDebug(false);
 const rooms = new Map();
 
 const app = express();
-const webServer = http.createServer(app);
-const wss = new WebSocket.Server({ noServer:true});
 
 app.use(express.static('public'));
 
 const ip = '127.0.0.1';
 const port = 5000;
 
-webServer.on('upgrade', async (req,sock,head) => {
 
-  let Url  = url.parse(req.url, true);
-  
-  wss.handleUpgrade(req,sock,head, async (socket) => {
+const server = http.createServer(function(request, response) {
+  console.log((new Date()) + ' Received request for ' + request.url);
+  response.writeHead(404);
+  response.end();
+});
 
-      let updateParticipants;
-      let participant;
-      let room = rooms.get(Url.query.id);
-      
-      //if not found
-      if (!room) 
-      {
-          //Create new Room
-          room = new Room(Url.query.id,ip);
-          //Append to room list
-          rooms.set(room.getId(), room);
-      }
+server.listen(5001, function() {
+  console.log((new Date()) + ' Server is starting');
+});
 
-      const tm = new TransactionManager(sock);
-
-      //Handle incoming commands
-      tm.on("cmd", async function(cmd) 
-      {
-          //Get command data
-          const data = cmd.data;
-          //check command type
-          switch(cmd.name)
-          {
-              case "join":
-                  try {
-                      //Check if we already have a participant
-                      if (participant)
-                          return cmd.reject("Already joined");
-
-                      //Create it
-                      participant = room.createParticipant(data.name);
-                      
-                      //Check
-                      if (!participant)
-                          return cmd.reject("Error creating participant");
-
-                      //Add listener
-                      room.on("participants",(updateParticipants = (participants) => {
-                          console.log("room::participants");
-                          tm.event("participants", participants);
-                      }));
-                      
-                      //Process the sdp
-                      const sdp = SDPInfo.process(data.sdp);
-          
-                      //Get all streams before adding us
-                      const streams = room.getStreams();
-                      
-                      //Init participant
-                      participant.init(sdp);
-                      
-                      //For each one
-                      for (let stream of streams)
-                          //Add it
-                          participant.addStream(stream);
-                      
-                      //Get answer
-                      const answer = participant.getLocalSDP();
-
-                      //Accept cmd
-                      cmd.accept({
-                          sdp	: answer.toString(),
-                          room	: room.getInfo()
-                      });
-                      
-                      //For all remote streams
-                      for (let stream of sdp.getStreams().values())
-                          //Publish them
-                          participant.publishStream(stream);
-                      
-                      participant.on("renegotiationneeded",(sdp) => {
-                          console.log("participant::renegotiationneeded");
-                          //Send update event
-                          tm.event('update',{
-                              sdp	: sdp.toString()
-                          });
-                      });
-                      
-                      //listen for participant events
-                      participant.on("closed",function(){
-                          //close ws
-                          sock.close();
-                          //Remove room listeners
-                          room.off("participants",updateParticipants);
-                      });
-                      
-                  } catch (error) {
-                      console.error(error);
-                      //Error
-                      cmd.reject({
-                          error: error
-                      });
-                  }
-                  break;
-          }
-      });
-
-      sock.on("close", function(){
-          console.log("connection:onclose");
-          //Check if we had a participant
-          if (participant)
-              //remove it
-              participant.stop();
-      });
-
-  })
-
+const wsServer = new WebSocketServer({
+  httpServer:server,
+  autoAcceptConnections: false
 })
 
-webServer.listen(port, ip,function() {
-	console.log('Open http://' + ip + ':' + port + ' with browser');
-});
+wsServer.on('request', async (request) => {
+
+  const url = request.resourceURL;
+
+  console.log('request', url);
+
+  let updateParticipants;
+  let participant;
+  let room = rooms.get(url.query.id);
+  
+  //if not found
+  if (!room) 
+  {
+      //Create new Room
+      room = new Room(url.query.id,ip);
+      //Append to room list
+      rooms.set(room.getId(), room);
+  }
+
+  console.log('enter room', room);
+
+  var protocol = request.requestedProtocols[0];
+
+  const connection = request.accept(protocol);
+
+  const tm = new TransactionManager(connection);
+
+  //Handle incoming commands
+  tm.on("cmd", async function(cmd) 
+  {
+
+      console.log(cmd);
+      //Get command data
+      const data = cmd.data;
+      //check command type
+      switch(cmd.name)
+      {
+          case "join":
+              try {
+                  //Check if we already have a participant
+                  if (participant)
+                      return cmd.reject("Already joined");
+
+                  //Create it
+                  participant = room.createParticipant(data.name);
+                  
+                  //Check
+                  if (!participant)
+                      return cmd.reject("Error creating participant");
+
+                  //Add listener
+                  room.on("participants",(updateParticipants = (participants) => {
+                      console.log("room::participants");
+                      tm.event("participants", participants);
+                  }));
+                  
+                  //Process the sdp
+                  const sdp = SDPInfo.process(data.sdp);
+      
+                  //Get all streams before adding us
+                  const streams = room.getStreams();
+                  
+                  //Init participant
+                  participant.init(sdp);
+                  
+                  //For each one
+                  for (let stream of streams)
+                      //Add it
+                      participant.addStream(stream);
+                  
+                  //Get answer
+                  const answer = participant.getLocalSDP();
+
+                  console.log('answer', answer);
+
+                  //Accept cmd
+                  cmd.accept({
+                      sdp	: answer.toString(),
+                      room	: room.getInfo()
+                  });
+                  
+                  //For all remote streams
+                  for (let stream of sdp.getStreams().values())
+                      //Publish them
+                      participant.publishStream(stream);
+                  
+                  participant.on("renegotiationneeded",(sdp) => {
+                      console.log("participant::renegotiationneeded");
+                      //Send update event
+                      tm.event('update',{
+                          sdp	: sdp.toString()
+                      });
+                  });
+                  
+                  //listen for participant events
+                  participant.on("closed",function(){
+                      //close ws
+                      connection.close();
+                      //Remove room listeners
+                      room.off("participants",updateParticipants);
+                  });
+                  
+              } catch (error) {
+                  console.error(error);
+                  //Error
+                  cmd.reject({
+                      error: error
+                  });
+              }
+              break;
+      }
+  });
+
+  connection.on("close", function(){
+      console.log("connection:onclose");
+      //Check if we had a participant
+      if (participant)
+          //remove it
+          participant.stop();
+  });
+
+  
+})
+
+
+app.listen(port);
