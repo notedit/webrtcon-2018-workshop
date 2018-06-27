@@ -80,6 +80,9 @@
         var localStream;
         var pc1;
         var pc2;
+
+
+
         var offerOptions = {
             offerToReceiveAudio: 1,
             offerToReceiveVideo: 1
@@ -103,6 +106,8 @@
         function start() {
             console.log('Requesting local stream');
             startButton.disabled = true;
+
+
             navigator.mediaDevices.getUserMedia({
                 audio: true,
                 video: true
@@ -118,8 +123,11 @@
             hangupButton.disabled = false;
             console.log('Starting call');
             startTime = window.performance.now();
+
+
             var videoTracks = localStream.getVideoTracks();
             var audioTracks = localStream.getAudioTracks();
+
             if (videoTracks.length > 0) {
                 console.log('Using video device: ' + videoTracks[0].label);
             }
@@ -127,22 +135,37 @@
                 console.log('Using audio device: ' + audioTracks[0].label);
             }
             var servers = null;
+
+
+    
             pc1 = new RTCPeerConnection(servers);
             console.log('Created local peer connection object pc1');
+
             pc1.onicecandidate = function(e) {
                 onIceCandidate(pc1, e);
             };
+
+
             pc2 = new RTCPeerConnection(servers);
             console.log('Created remote peer connection object pc2');
             pc2.onicecandidate = function(e) {
                 onIceCandidate(pc2, e);
             };
+
+
+
             pc1.oniceconnectionstatechange = function(e) {
+               console.log('oniceconnectionstatechange',e)
+
                 onIceStateChange(pc1, e);
             };
+
+
             pc2.oniceconnectionstatechange = function(e) {
                 onIceStateChange(pc2, e);
             };
+
+
             pc2.ontrack = gotRemoteStream;
 
             localStream.getTracks().forEach(
@@ -156,6 +179,8 @@
             console.log('Added local stream to pc1');
 
             console.log('pc1 createOffer start');
+  
+
             pc1.createOffer(
                 offerOptions
             ).then(
@@ -178,6 +203,7 @@
                 onSetSessionDescriptionError
             );
             console.log('pc2 setRemoteDescription start');
+            
             pc2.setRemoteDescription(desc).then(
                 function() {
                 onSetRemoteSuccess(pc2);

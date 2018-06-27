@@ -1,11 +1,13 @@
 
 const http = require('http');
 const url = require('url');
-const MediaServer  = require('medooze-media-server');
 const EventEmitter	= require('events').EventEmitter;
+
+
+const MediaServer  = require('medooze-media-server');
 const TransactionManager = require('transaction-manager');
-//Get Semantic SDP objects
 const SemanticSDP	= require('semantic-sdp');
+
 const SDPInfo		= SemanticSDP.SDPInfo;
 const MediaInfo		= SemanticSDP.MediaInfo;
 const CandidateInfo	= SemanticSDP.CandidateInfo;
@@ -443,6 +445,8 @@ server.listen(5001, function() {
   console.log((new Date()) + ' Server is starting');
 });
 
+
+
 const wsServer = new WebSocketServer({
   httpServer:server,
   autoAcceptConnections: false
@@ -529,7 +533,7 @@ wsServer.on('request', async (request) => {
                       room	: room.getInfo()
                   });
                   
-                  //For all remote streams
+                  // //For all remote streams
                   for (let stream of sdp.getStreams().values())
                       //Publish them
                       participant.publishStream(stream);
@@ -557,6 +561,29 @@ wsServer.on('request', async (request) => {
                       error: error
                   });
               }
+              break;
+          case 'offer':
+
+              console.log('renegotiation==================');
+
+              const sdp = SDPInfo.process(data.sdp);
+              for (let stream of sdp.getStreams().values()){
+
+                if(!participant.incomingStreams.get(stream.getId())){
+                  //Publish them
+                  participant.publishStream(stream);
+                }
+              }
+
+              const answer = participant.getLocalSDP();
+
+              console.log('answer', answer);
+
+              //Accept cmd
+              cmd.accept({
+                  sdp	: answer.toString()
+              });
+
               break;
       }
   });

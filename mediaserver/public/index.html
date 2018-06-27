@@ -112,10 +112,12 @@ function connect()
 
       //Play it
       addVideoForStream(stream,true);
-      //Add stream to peer connection
-      pc.addStream(stream);
-			 
-			
+
+
+      // we add stream later 
+      // pc.addStream(stream);
+
+
 			//Create new offer
 			const offer = await pc.createOffer({
 				offerToReceiveAudio: true,
@@ -147,8 +149,44 @@ function connect()
 			await pc.setRemoteDescription(answer);
 			
 			console.log("pc::setRemoteDescription succes",answer.sdp);
-			
-			console.log("JOINED");
+      console.log("JOINED");
+
+      // now we add Stream and then  renegotiation
+
+      // wait ice checking complete
+
+      setTimeout(async ()=> {
+
+        pc.addStream(stream);
+
+        const reoffer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
+
+        //Set it
+        pc.setLocalDescription(offer);
+
+        //Renegotiation
+        const ret  = await tm.cmd("offer",{
+          sdp	: reoffer.sdp
+        });
+
+        //Create answer
+        const reanswer = new RTCSessionDescription({
+          type	:'answer',
+          sdp	: ret.sdp
+        });
+
+        //Set it
+        await pc.setRemoteDescription(reanswer);
+
+        console.log("pc::setRemoteDescription succes",reanswer.sdp);
+        console.log("renegotiation");
+
+      }, 2000)
+
+
 		} catch (error) {
 			console.error("Error",error);
 			ws.close();
