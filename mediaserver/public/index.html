@@ -40,11 +40,11 @@ const url = "ws://127.0.0.1:5001";
 function addVideoForStream(stream,muted)
 {
 	//Create new video element
-	const video = document.createElement("video");
+    const video = document.createElement("video");
 	//Set same id
-  video.id = stream.id;
-  video.width = 320;
-  video.height = 240;
+    video.id = stream.id;
+    video.width = 320;
+    video.height = 240;
 	//Set src stream
 	video.srcObject = stream;
 	//Set other properties
@@ -69,9 +69,10 @@ function removeVideoForStream(stream)
 
 function connect() 
 {
-  container = document.getElementById('container');
-
-  console.log("connect");
+    
+    container = document.getElementById('container');
+    
+    console.log("connect");
 
 	var pc = new RTCPeerConnection({
 		bundlePolicy: "max-bundle",
@@ -100,22 +101,21 @@ function connect()
 	{
 	  console.log("ws:opened");
 		
-		try
-		{
+		try {
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: true
-      });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: true
+            });
 
-      console.debug("md::getUserMedia sucess",stream);
+            console.debug("md::getUserMedia sucess",stream);
 
-      //Play it
-      addVideoForStream(stream,true);
+            //Play it
+            addVideoForStream(stream,true);
 
 
-      // we add stream later 
-      // pc.addStream(stream);
+            // we add stream later 
+            //pc.addStream(stream);
 
 
 			//Create new offer
@@ -127,9 +127,8 @@ function connect()
 			//Set it
 			pc.setLocalDescription(offer);
 
-      console.log("pc::setLocalDescription succes",offer.sdp);
+            console.log("offer ==== ",offer.sdp);
       
-      console.log('join', tm);
 
 			//Join room
 			const joined = await tm.cmd("join",{
@@ -137,7 +136,7 @@ function connect()
 				sdp	: offer.sdp
 			});
 			
-			console.log("cmd::join success",joined);
+			console.log("answer ==== ",joined.sdp);
 			
 			//Create answer
 			const answer = new RTCSessionDescription({
@@ -146,45 +145,44 @@ function connect()
 			});
 			
 			//Set it
-			await pc.setRemoteDescription(answer);
-			
-			console.log("pc::setRemoteDescription succes",answer.sdp);
-      console.log("JOINED");
+            await pc.setRemoteDescription(answer);
+            
 
-      // now we add Stream and then  renegotiation
+            // now we add Stream and then  renegotiation
 
-      // wait ice checking complete
+            // wait ice checking complete
 
-      setTimeout(async ()=> {
+            setTimeout(async ()=> {
 
-        pc.addStream(stream);
+                pc.addStream(stream);
 
-        const reoffer = await pc.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: true
-        });
+                const reoffer = await pc.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true
+                });
 
-        //Set it
-        pc.setLocalDescription(offer);
+                //Set it
+                pc.setLocalDescription(reoffer);
 
-        //Renegotiation
-        const ret  = await tm.cmd("offer",{
-          sdp	: reoffer.sdp
-        });
 
-        //Create answer
-        const reanswer = new RTCSessionDescription({
-          type	:'answer',
-          sdp	: ret.sdp
-        });
+                console.log("second offer ====  ", offer.sdp )
+                //Renegotiation
+                const ret  = await tm.cmd("offer",{
+                    sdp	: reoffer.sdp
+                });
 
-        //Set it
-        await pc.setRemoteDescription(reanswer);
+                //Create answer
+                const reanswer = new RTCSessionDescription({
+                    type	:'answer',
+                    sdp	:   ret.sdp
+                });
 
-        console.log("pc::setRemoteDescription succes",reanswer.sdp);
-        console.log("renegotiation");
+                //Set it
+                await pc.setRemoteDescription(reanswer);
 
-      }, 2000)
+                console.log("second answer ==== ", reanswer.sdp);
+
+            }, 10000)
 
 
 		} catch (error) {

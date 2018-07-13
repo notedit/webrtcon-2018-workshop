@@ -84,13 +84,16 @@ class Participant
 			ice		: this.transport.getLocalICEInfo(),
 			candidates	: endpoint.getLocalCandidates(),
 			capabilities	: this.room.getCapabilities()
-		});
+        });
+        
+        answer.getMedia("audio").setDirection(Direction.SENDRECV);
+        answer.getMedia("video").setDirection(Direction.SENDRECV);
 		
 		//Set RTP local  properties
 		this.transport.setLocalProperties({
 			audio : answer.getMedia("audio"),
-			video : answer.getMedia("video")
-    });
+            video : answer.getMedia("video")
+        });
     
 
 		this.localSDP = answer;
@@ -423,7 +426,7 @@ class Room
 
 
 MediaServer.enableDebug(true);
-MediaServer.enableUltraDebug(false);
+MediaServer.enableUltraDebug(true);
 
 const rooms = new Map();
 
